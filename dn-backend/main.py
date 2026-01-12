@@ -215,5 +215,15 @@ STATIC_DIR = BASE_DIR / "static"
 def root():
     return FileResponse(STATIC_DIR / "index.html")
 
+# Root → static/index.html
+@app.get("/create")
+def root():
+    return FileResponse(STATIC_DIR / "index.html")
+
+# Root → static/index.html
+@app.get("/info")
+def root():
+    return FileResponse(STATIC_DIR / "index.html")
+
 # Serve static files
 app.mount("/", StaticFiles(directory=STATIC_DIR), name="static")
