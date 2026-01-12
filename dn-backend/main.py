@@ -210,10 +210,10 @@ def list_api(uuid: Optional[str] = None) -> List[Dict[str, Any]]:
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
-# Serve static files
-app.mount("/", StaticFiles(directory=STATIC_DIR), name="static")
-
 # Root → static/index.html
 @app.get("/")
 def root():
     return FileResponse(STATIC_DIR / "index.html")
+
+# Serve static files
+app.mount("/", StaticFiles(directory=STATIC_DIR), name="static")
