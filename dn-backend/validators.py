@@ -40,3 +40,12 @@ def string_min_length(min_len: int):
         return True, ""
 
     return _v
+
+def int_min_value(min_value: int):
+    def _v(value: Any) -> Tuple[bool, str]:
+        if not isinstance(value, int):
+            return False, "Value must be an integer."
+        if value < min_value:
+            return False, f"Integer must be >= {min_value}."
+        return True, ""
+    return _v

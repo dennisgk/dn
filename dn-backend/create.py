@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Any, Callable, Dict, List, Literal, Tuple
 
-from validators import string_min_length, utc_datetime_in_future, parse_utc_datetime
+from validators import string_min_length, utc_datetime_in_future, parse_utc_datetime, int_min_value
 
 
 ArgType = Literal["DATETIME", "TEXT", "TEXTAREA", "INTEGER", "FLOAT", "BOOLEAN"]
@@ -88,6 +88,63 @@ def _handler_30_min_before_repeat(uuid: str, args: List[Any]) -> List[Tuple[str,
     out.sort(key=lambda x: x[0])
     return out
 
+def _validate_30_min_before_repeat_weekly(args: List[Any]) -> Tuple[bool, str]:
+    # args: [target_dt_utc_str, weeks_between:int, message:str]
+    if len(args) != 3:
+        return False, "30_MIN_BEFORE_REPEAT_WEEKLY requires exactly 3 arguments."
+
+    ok, msg = utc_datetime_in_future(args[0])
+    if not ok:
+        return False, msg
+
+    ok, msg = int_min_value(1)(args[1])
+    if not ok:
+        return False, "Weeks between must be an integer >= 1."
+
+    ok, msg = string_min_length(1)(args[2])
+    if not ok:
+        return False, msg
+
+    return True, ""
+
+
+def _handler_30_min_before_repeat_weekly(uuid: str, args: List[Any]) -> List[Tuple[str, str]]:
+    target_str = str(args[0]).strip()
+    weeks_between = int(args[1])
+    msg = str(args[2])
+
+    base_dt = parse_utc_datetime(target_str)
+    if not base_dt:
+        return []
+
+    now = datetime.now(timezone.utc)
+
+    # Determine the NEXT occurrence time >= now
+    # The base_dt gives the time-of-day + weekday pattern (in UTC).
+    # We jump forward in weeks_between-week increments until it is in the future.
+    next_dt = base_dt
+    step = timedelta(weeks=weeks_between)
+
+    # If base is already far in the past, advance it until it's in the future.
+    while next_dt <= now:
+        next_dt = next_dt + step
+
+    # 6 reminders before the next occurrence
+    offsets = [30, 25, 20, 15, 10, 5]
+    out: List[Tuple[str, str]] = []
+    for m in offsets:
+        t = (next_dt - timedelta(minutes=m)).astimezone(timezone.utc)
+        out.append((t.isoformat().replace("+00:00", "Z"), msg))
+
+    # 1 distal reminder for the following occurrence (keepalive so it stays active)
+    # Use "30 minutes before" for the distal occurrence.
+    distal_dt = next_dt + step
+    distal_reminder = (distal_dt - timedelta(minutes=30)).astimezone(timezone.utc)
+    out.append((distal_reminder.isoformat().replace("+00:00", "Z"), msg))
+
+    out.sort(key=lambda x: x[0])
+    return out
+
 
 _TYPES: List[NotificationType] = [
     NotificationType(
@@ -107,6 +164,16 @@ _TYPES: List[NotificationType] = [
         ],
         validator=_validate_30_min_before_repeat,
         handler=_handler_30_min_before_repeat,
+    ),
+    NotificationType(
+        type="30_MIN_BEFORE_REPEAT_WEEKLY",
+        arguments=[
+            ArgSpec(type="DATETIME", label="Target time (UTC)", desc="Base UTC time (pattern). Next occurrence is computed from this."),
+            ArgSpec(type="INTEGER", label="Weeks between", desc="Must be >= 1. Example: 1 = every week, 2 = every 2 weeks."),
+            ArgSpec(type="TEXTAREA", label="Message", desc="Content to send for each reminder."),
+        ],
+        validator=_validate_30_min_before_repeat_weekly,
+        handler=_handler_30_min_before_repeat_weekly,
     ),
 ]
 
