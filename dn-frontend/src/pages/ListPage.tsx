@@ -5,7 +5,7 @@ import { apiGet, isPast, type ListRow } from "../api";
 
 export default function ListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const contentParam = (searchParams.get("content") || "").trim();
+  const contentParam = searchParams.get("content") || "";
 
   const [rows, setRows] = useState<ListRow[]>([]);
   const [err, setErr] = useState<string>("");
