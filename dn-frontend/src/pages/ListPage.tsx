@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Badge, Form, Table } from "react-bootstrap";
 import { Link, useSearchParams } from "react-router";
-import { apiGet, formatLocal, isPast, type ListRow } from "../api";
+import { apiGet, isPast, type ListRow } from "../api";
 
 export default function ListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const uuidParam = (searchParams.get("uuid") || "").trim();
+  const contentParam = (searchParams.get("content") || "").trim();
 
   const [rows, setRows] = useState<ListRow[]>([]);
   const [err, setErr] = useState<string>("");
@@ -14,22 +14,42 @@ export default function ListPage() {
     (async () => {
       try {
         setErr("");
-        const path = uuidParam
-          ? `/api/list?uuid=${encodeURIComponent(uuidParam)}`
-          : "/api/list";
-        const data = await apiGet<ListRow[]>(path);
+        const data = await apiGet<ListRow[]>("/api/list");
         setRows(data);
       } catch (e: any) {
         setErr(e?.message || String(e));
       }
     })();
-  }, [uuidParam]);
+  }, []);
 
   const sorted = useMemo(() => {
     const r = [...rows];
     r.sort((a, b) => -1 * a.utc_datetime.localeCompare(b.utc_datetime));
-    return r;
-  }, [rows]);
+    const l = r.filter(
+      (v, ind) => !r.slice(0, ind).some((x) => x.uuid === v.uuid),
+    );
+
+    let f = l;
+    if (contentParam.trim() !== "") {
+      f = l.filter((v) => {
+        if (!v.content) return false;
+
+        const wordsInParam = contentParam
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean);
+
+        const wordsInContent = v.content
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean);
+
+        return wordsInParam.every((w) => wordsInContent.includes(w));
+      });
+    }
+
+    return f;
+  }, [rows, contentParam]);
 
   return (
     <div>
@@ -37,15 +57,15 @@ export default function ListPage() {
 
       <Form className="mb-3">
         <Form.Group>
-          <Form.Label>Filter by UUID (optional)</Form.Label>
+          <Form.Label>Filter by Content (optional)</Form.Label>
           <Form.Control
-            value={uuidParam}
-            placeholder="uuid..."
+            value={contentParam}
+            placeholder="content..."
             onChange={(e) => {
               const v = e.target.value;
               const next = new URLSearchParams(searchParams);
-              if (v.trim()) next.set("uuid", v.trim());
-              else next.delete("uuid");
+              if (v.trim()) next.set("content", v.trim());
+              else next.delete("content");
               setSearchParams(next);
             }}
           />
@@ -57,8 +77,6 @@ export default function ListPage() {
       <Table striped bordered hover responsive>
         <thead>
           <tr>
-            <th>When (local)</th>
-            <th>When (UTC)</th>
             <th>UUID</th>
             <th>Name</th>
             <th>Content</th>
@@ -73,8 +91,6 @@ export default function ListPage() {
                 key={`${r.uuid}:${r.utc_datetime}:${idx}`}
                 className={past ? "text-success" : "text-warning"}
               >
-                <td>{formatLocal(r.utc_datetime)}</td>
-                <td>{r.utc_datetime}</td>
                 <td style={{ fontFamily: "monospace" }}>
                   <Link to={`/info?uuid=${encodeURIComponent(r.uuid)}`}>
                     {r.uuid}

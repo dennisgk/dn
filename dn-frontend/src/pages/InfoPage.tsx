@@ -34,7 +34,7 @@ export default function InfoPage() {
       try {
         setErr("");
         const resp = await apiGet<InfoResponse>(
-          `/api/info?uuid=${encodeURIComponent(uuid)}`
+          `/api/info?uuid=${encodeURIComponent(uuid)}`,
         );
         setData(resp);
       } catch (e: any) {
@@ -53,7 +53,7 @@ export default function InfoPage() {
     setDelErr("");
     try {
       const resp = await apiGet<any>(
-        `/api/delete?uuid=${encodeURIComponent(uuid)}`
+        `/api/delete?uuid=${encodeURIComponent(uuid)}`,
       );
       if (!resp?.ok) {
         setDelErr(resp?.message || "Delete failed.");
@@ -103,12 +103,6 @@ export default function InfoPage() {
           </div>
 
           <div className="mt-3 d-flex gap-2">
-            <Button
-              variant="outline-primary"
-              onClick={() => nav(`/?uuid=${encodeURIComponent(uuid)}`)}
-            >
-              View in list
-            </Button>
             <Button variant="danger" onClick={() => setShowDel(true)}>
               Delete
             </Button>
