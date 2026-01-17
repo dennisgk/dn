@@ -31,20 +31,22 @@ export default function ListPage() {
 
     let f = l;
     if (contentParam.trim() !== "") {
+      const tokenize = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/[^\w\s]/g, " ")
+          .split(/\s+/)
+          .filter(Boolean);
+
       f = l.filter((v) => {
         if (!v.content) return false;
 
-        const wordsInParam = contentParam
-          .toLowerCase()
-          .split(/\s+/)
-          .filter(Boolean);
+        const wordsInParam = tokenize(contentParam);
+        const wordsInContent = tokenize(v.content);
 
-        const wordsInContent = v.content
-          .toLowerCase()
-          .split(/\s+/)
-          .filter(Boolean);
-
-        return wordsInParam.every((w) => wordsInContent.includes(w));
+        return wordsInParam.every((paramWord) =>
+          wordsInContent.some((contentWord) => contentWord.includes(paramWord)),
+        );
       });
     }
 
@@ -64,7 +66,7 @@ export default function ListPage() {
             onChange={(e) => {
               const v = e.target.value;
               const next = new URLSearchParams(searchParams);
-              if (v.trim()) next.set("content", v.trim());
+              if (v.trim()) next.set("content", v);
               else next.delete("content");
               setSearchParams(next);
             }}
